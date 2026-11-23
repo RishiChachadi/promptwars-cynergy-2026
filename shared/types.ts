@@ -73,6 +73,28 @@ export interface Project {
 }
 
 export interface AssistantStatus {
-  mode: 'unavailable'
+  mode: 'available' | 'unavailable'
   message: string
+}
+
+export interface EquipmentRecommendation {
+  resourceId: string
+  name: string
+  department: Department
+  lab: string
+  status: ResourceStatus
+  requiresApproval: boolean
+  projectEvidence: string
+  capability: string
+  usage: string
+  slots: BookingSlot[]
+}
+
+export interface AssistantResult {
+  mode: 'gemini' | 'fallback'
+  message: string | null
+  projectId: string | null
+  durationMinutes: number
+  questions: string[]
+  recommendations: EquipmentRecommendation[]
 }

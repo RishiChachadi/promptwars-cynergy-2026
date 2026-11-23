@@ -11,7 +11,10 @@ const db = openDatabase(databasePath === ':memory:' ? databasePath : resolve(dat
 const dist = fileURLToPath(new URL('../client/dist', import.meta.url))
 const app = createApp({
   db,
-  assistant: createProjectAssistant(process.env),
+  assistant: createProjectAssistant(process.env, {
+    db,
+    development: process.argv.includes('--development') || process.env.NODE_ENV === 'development',
+  }),
   staticDirectory: existsSync(dist) ? dist : undefined,
 })
 

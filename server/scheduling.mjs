@@ -141,6 +141,13 @@ function suggest(db, schedule, request, pending = feasibleRequests(schedule)) {
 
 const feasibleRequests = schedule => schedule.pending.filter(row => isEligible(row) && !slotIssue(schedule, row))
 
+export function previewBookingSlots(db, { resourceId, userId, deadlineAt, durationMinutes }, now = Date.now()) {
+  const schedule = resourceSchedule(db, resourceId, now)
+  if (!schedule.resource) return []
+  const start = Math.ceil((now + minute) / minute) * minute
+  return suggest(db, schedule, { resourceId, userId, deadlineAt, start, end: start + durationMinutes * minute })
+}
+
 const priorityRules = [
   [entry => entry.flexible, 'Priority went to the request with no other feasible slot for the same duration.'],
   [entry => entry.slack, 'Priority went to the project with less time to finish the session before its deadline.'],

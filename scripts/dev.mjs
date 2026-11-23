@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 
 const commands = [
-  ['--watch', '--env-file-if-exists=.env', 'server/index.mjs'],
+  ['--watch', '--env-file-if-exists=.env', 'server/index.mjs', '--development'],
   ['node_modules/vite/bin/vite.js', '--config', 'client/vite.config.ts'],
 ]
 const children = commands.map(args => spawn(process.execPath, args, { stdio: 'inherit' }))

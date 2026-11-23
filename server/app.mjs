@@ -1,5 +1,6 @@
 import express from 'express'
 import { ApprovalError, decideApproval, listApprovalQueue, listBookings } from './approvals.mjs'
+import { AssistantError } from './assistant.mjs'
 import { getResource, listResources } from './resources.mjs'
 import { createBooking, SchedulingError } from './scheduling.mjs'
 import { demoAccountIds } from './seed.mjs'
@@ -7,11 +8,11 @@ import { demoAccountIds } from './seed.mjs'
 export function createApp({ db, assistant, staticDirectory, clock = Date.now }) {
   const app = express()
   app.disable('x-powered-by')
-  app.use('/api', express.json({ limit: '8kb' }))
   app.use('/api', (_req, res, next) => {
     res.set('Cache-Control', 'no-store')
     next()
   })
+  app.use('/api', express.json({ limit: '8kb' }))
 
   function demoAccount(req, res, next) {
     const id = req.get('x-lablink-demo-account')
@@ -58,6 +59,9 @@ export function createApp({ db, assistant, staticDirectory, clock = Date.now }) 
     res.json(decideApproval(db, res.locals.actor, req.params.id, req.body?.decision, clock))
   })
   app.get('/api/assistant/status', (_req, res) => res.json(assistant.status()))
+  app.post('/api/assistant/recommendations', demoAccount, async (req, res) => {
+    res.json(await assistant.recommend(res.locals.actor, req.body))
+  })
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint not found.' }))
 
   if (staticDirectory) {
@@ -70,12 +74,20 @@ export function createApp({ db, assistant, staticDirectory, clock = Date.now }) 
 
   app.use((error, _req, res, next) => {
     if (res.headersSent) return next(error)
-    if (error instanceof ApprovalError) return res.status(error.status).json({ error: error.message })
+    if (error instanceof ApprovalError || error instanceof AssistantError) {
+      return res.status(error.status).json({ error: error.message })
+    }
     if (error instanceof SchedulingError) {
       return res.status(error.status).json({ error: error.message, alternatives: error.alternatives })
     }
+    if (error instanceof URIError && error.status === 400) {
+      return res.status(400).json({ error: 'Invalid URL encoding.' })
+    }
     if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON request.' })
     if (error.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' })
+    if (error.type === 'encoding.unsupported' || error.type === 'charset.unsupported') {
+      return res.status(415).json({ error: 'Unsupported request encoding. Send UTF-8 JSON.' })
+    }
     res.status(500).json({ error: 'Something went wrong. Please try again.' })
   })
   return app

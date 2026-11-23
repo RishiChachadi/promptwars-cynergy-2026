@@ -109,7 +109,7 @@
   .page-heading p { @apply mt-2 max-w-2xl text-base text-muted; }
   .filter-bar { @apply grid grid-cols-[minmax(230px,1.6fr)_1fr_1fr_1fr] gap-3 rounded-xl border border-line bg-white p-4; }
   .field { @apply grid min-w-0 gap-1.5 text-sm font-semibold; }
-  .field select, .field input, .field textarea, .search-input { @apply min-h-10 min-w-0 rounded-lg border border-[#d8dae8] bg-white text-sm font-normal text-ink; }
+  .field select, .field input, .field textarea, .search-input { @apply min-h-10 min-w-0 rounded-lg border border-[#858ba2] bg-white text-sm font-normal text-ink; }
   .field select, .field input, .field textarea { @apply w-full px-2.5 py-2; }
   .booking-form { @apply grid gap-3; }
   .booking-form button { @apply justify-self-start; }
@@ -138,8 +138,12 @@
   .project-list li { @apply py-3 text-sm; }
   .project-list p { @apply mt-0.5; }
   .assistant-panel h2 { @apply mt-3 mb-2; }
-  .assistant-panel .button { @apply mt-5; }
-  .booking-list { @apply divide-y divide-line overflow-hidden rounded-xl border border-line bg-white shadow-sm; }
+  .assistant-results { @apply mt-5 grid gap-4; }
+  .assistant-results h3 { @apply font-bold; }
+  .assistant-recommendation { @apply rounded-lg border border-line p-4; }
+  .assistant-recommendation .button { @apply mt-3; }
+  .assistant-questions { @apply list-disc space-y-2 pl-5 text-sm text-muted; }
+  .booking-list { @apply divide-y divide-line overflow-hidden rounded-xl border border-line bg-white shadow-sm; container-type: inline-size; }
   .booking-row { @apply grid grid-cols-[auto_minmax(160px,1fr)_minmax(130px,auto)_auto] items-center gap-3 px-4 py-3; }
   .date-box { @apply grid size-11 place-content-center rounded-lg bg-[#f1edff] text-center text-accent; }
   .date-box span { @apply text-[.67rem] leading-none font-semibold uppercase; }
@@ -156,9 +160,16 @@
   .approval-title > div { @apply flex-1; }
   .approval-title a:hover { @apply text-accent underline; }
   .approval-title p { @apply mt-0.5; }
+  .approval-purpose { overflow-wrap: anywhere; }
   .approval-meta { @apply mt-3 flex flex-wrap gap-x-5 gap-y-1; }
   .approval-actions { @apply mt-4 flex flex-wrap justify-end gap-2 border-t border-line pt-3; }
   .decision-feedback:not(:empty) { @apply mb-4 rounded-lg border border-line bg-white p-3 text-sm; }
+}
+
+@container (max-width: 36rem) {
+  .booking-row { grid-template-columns: auto minmax(0, 1fr); }
+  .booking-time { grid-column: 2; }
+  .booking-row .badge { grid-column: 2; }
 }
 
 @media (max-width: 1150px) {
@@ -189,8 +200,5 @@
   .metric-chevron { display: block; }
   .equipment-grid, .detail-grid, .assistant-layout { grid-template-columns: 1fr; }
   .filter-search { grid-column: 1 / -1; }
-  .booking-row { grid-template-columns: auto minmax(0, 1fr); }
-  .booking-time { grid-column: 2; }
-  .booking-row .badge { grid-column: 2; }
   .breadcrumbs > span, .breadcrumbs > svg { display: none; }
 }

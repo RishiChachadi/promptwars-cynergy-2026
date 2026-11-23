@@ -63,6 +63,11 @@ CREATE TABLE IF NOT EXISTS project_equipment_requirements (
   PRIMARY KEY (project_id, resource_id)
 ) STRICT;
 
+CREATE TABLE IF NOT EXISTS assistant_daily_usage (
+  day TEXT PRIMARY KEY,
+  attempts INTEGER NOT NULL CHECK (attempts > 0)
+) STRICT;
+
 CREATE INDEX IF NOT EXISTS availability_resource_time ON availability (resource_id, starts_at, ends_at);
 CREATE INDEX IF NOT EXISTS bookings_resource_time ON bookings (resource_id, starts_at, ends_at);
 CREATE INDEX IF NOT EXISTS bookings_user ON bookings (user_id);

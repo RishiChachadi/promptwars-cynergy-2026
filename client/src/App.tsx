@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Boxes, CalendarDays, ChevronDown, ChevronRight, CircleCheckBig, FlaskConical, LayoutDashboard, Menu, Sparkles, X } from 'lucide-react'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import type { DemoAccount } from '../../shared/types'
@@ -22,6 +22,9 @@ export function App() {
   const accounts = useApi<DemoAccount[]>('/demo-accounts')
   const [selectedId, setSelectedId] = useState(() => localStorage.getItem('lablink-demo-account'))
   const [menuOpen, setMenuOpen] = useState(false)
+  const navigationMenu = useRef<HTMLElement>(null)
+  const menuToggle = useRef<HTMLButtonElement>(null)
+  const main = useRef<HTMLElement>(null)
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const account = accounts.data?.find(item => item.id === selectedId) ?? accounts.data?.[0]
@@ -34,24 +37,38 @@ export function App() {
     document.title = currentPage + ' | LabLink'
   }, [pathname, currentPage])
 
+  useEffect(() => {
+    if (menuOpen) navigationMenu.current?.querySelector<HTMLAnchorElement>('nav a')?.focus()
+  }, [menuOpen])
+
+  function followNavigation() {
+    if (menuOpen) main.current?.focus({ preventScroll: true })
+    setMenuOpen(false)
+  }
+
   function switchAccount(id: string) {
     const next = accounts.data?.find(item => item.id === id)
     setSelectedId(id)
     localStorage.setItem('lablink-demo-account', id)
-    setMenuOpen(false)
+    followNavigation()
     if (next?.role === 'faculty') navigate('/approvals')
     else if (pathname === '/approvals') navigate('/')
   }
 
-  return <div className="app-shell">
+  return <div className="app-shell" onKeyDown={event => {
+    if (!menuOpen || event.key !== 'Escape') return
+    event.preventDefault()
+    setMenuOpen(false)
+    menuToggle.current?.focus()
+  }}>
     <a href="#main-content" className="skip-link">Skip to content</a>
-    <aside id="workspace-navigation" className={'sidebar' + (menuOpen ? ' sidebar-open' : '')}>
-      <Link className="brand" to="/" onClick={() => setMenuOpen(false)}>
+    <aside ref={navigationMenu} id="workspace-navigation" className={'sidebar' + (menuOpen ? ' sidebar-open' : '')}>
+      <Link className="brand" to="/" onClick={followNavigation}>
         <LabMark /><span><strong>LabLink<span>.</span></strong><small>CAMPUS LAB WORKSPACE</small></span>
       </Link>
       <nav aria-label="Workspace" className="navigation">
         <div className="nav-label">WORKSPACE</div>
-        {nav.map(({ path, label, icon: Icon }) => <NavLink key={path} to={path} end={path === '/'} onClick={() => setMenuOpen(false)}>
+        {nav.map(({ path, label, icon: Icon }) => <NavLink key={path} to={path} end={path === '/'} onClick={followNavigation}>
           <Icon size={19} aria-hidden="true" />{label}
         </NavLink>)}
       </nav>
@@ -69,14 +86,14 @@ export function App() {
     </aside>
     <div className="workspace">
       <header className="topbar">
-        <button className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen}
+        <button ref={menuToggle} className="menu-toggle" aria-label={menuOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={menuOpen}
           aria-controls="workspace-navigation" onClick={() => setMenuOpen(value => !value)}>
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          {menuOpen ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}
         </button>
         <div className="breadcrumbs"><span>Workspace</span><ChevronRight size={15} aria-hidden="true" /><strong>{currentPage}</strong></div>
         <span className="top-demo"><FlaskConical size={14} aria-hidden="true" /> Demo mode</span>
       </header>
-      <main id="main-content" className="main-content" tabIndex={-1}>
+      <main ref={main} id="main-content" className="main-content" tabIndex={-1}>
         {accounts.error ? <ErrorState message={accounts.error} retry={accounts.retry} /> : !accounts.data ? <Loading message="Loading demo workspace…" /> : !account ?
           <Empty title="No demo accounts" icon="lab">The workspace needs a demo account to continue.</Empty> :
           <Routes>
@@ -84,7 +101,7 @@ export function App() {
             <Route path="/equipment" element={<Explore />} />
             <Route path="/equipment/:id" element={<EquipmentDetails account={account} />} />
             <Route path="/bookings" element={<Bookings account={account} />} />
-            <Route path="/assistant" element={<ProjectAssistant account={account} />} />
+            <Route path="/assistant" element={<ProjectAssistant key={account.id} account={account} />} />
             <Route path="/approvals" element={<FacultyApprovals key={account.id} account={account} />} />
             <Route path="*" element={<Empty title="Page not found"><Link className="text-link" to="/">Back to Dashboard</Link></Empty>} />
           </Routes>}
