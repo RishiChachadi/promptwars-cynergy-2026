@@ -1,4 +1,4 @@
-export const demoAccountIds = ['demo-student', 'demo-faculty']
+export const demoAccountIds = ['demo-student', 'demo-faculty', 'faculty-mech', 'faculty-cse']
 
 const resources = [
   ['esp32-devkit', 'ESP32 Development Kit', 'ECE', 'Embedded Systems Lab', 'Microcontrollers',
@@ -47,10 +47,11 @@ export function seedDemo(db, now = new Date()) {
     user.run('demo-faculty', 'Dr. Meera Iyer', 'faculty', 'ECE')
     user.run('student-aarav', 'Aarav Shah', 'student', 'ECE')
     user.run('faculty-mech', 'Prof. Kavya Sen', 'faculty', 'Mechanical')
+    user.run('faculty-cse', 'Dr. Nikhil Menon', 'faculty', 'CSE')
 
-    const project = db.prepare('INSERT INTO projects VALUES (?, ?, ?, ?)')
-    project.run('campus-air', 'demo-student', 'Campus Air Monitor', 'Prototype a connected air-quality sensor for shared study spaces.')
-    project.run('signal-filter', 'student-aarav', 'Adaptive Signal Filter', 'Validate a digital filter for a classroom demonstration.')
+    const project = db.prepare('INSERT INTO projects (id, owner_id, title, description, deadline_at) VALUES (?, ?, ?, ?, ?)')
+    project.run('campus-air', 'demo-student', 'Campus Air Monitor', 'Prototype a connected air-quality sensor for shared study spaces.', at(8, 13))
+    project.run('signal-filter', 'student-aarav', 'Adaptive Signal Filter', 'Validate a digital filter for a classroom demonstration.', at(6, 12))
 
     const resource = db.prepare('INSERT INTO resources VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     const availability = db.prepare('INSERT INTO availability (resource_id, starts_at, ends_at, kind) VALUES (?, ?, ?, ?)')
@@ -61,7 +62,11 @@ export function seedDemo(db, now = new Date()) {
       }
     })
 
-    const booking = db.prepare('INSERT INTO bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    const requirement = db.prepare('INSERT INTO project_equipment_requirements VALUES (?, ?)')
+    for (const id of ['esp32-devkit', 'digital-oscilloscope', 'fdm-3d-printer']) requirement.run('campus-air', id)
+    requirement.run('signal-filter', 'fpga-board')
+
+    const booking = db.prepare('INSERT INTO bookings (id, user_id, project_id, resource_id, starts_at, ends_at, status, purpose) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
     booking.run('bk-101', 'demo-student', 'campus-air', 'digital-oscilloscope', at(2, 10), at(2, 11), 'approved', 'Verify sensor signal stability.')
     booking.run('bk-102', 'demo-student', 'campus-air', 'esp32-devkit', at(2, 14), at(2, 16), 'approved', 'Test Wi-Fi telemetry on the prototype.')
     booking.run('bk-103', 'demo-student', 'campus-air', 'fdm-3d-printer', at(4, 11), at(4, 13), 'pending', 'Print a ventilated sensor enclosure.')

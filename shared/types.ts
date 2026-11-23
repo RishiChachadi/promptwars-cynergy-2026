@@ -44,14 +44,32 @@ export interface Booking {
   resourceName: string
   department: Department
   lab: string
+  projectId: string
   projectTitle: string
   studentName: string
+  scheduling?: BookingFeedback & { canApprove: boolean }
+}
+
+export interface BookingSlot {
+  startsAt: string
+  endsAt: string
+}
+
+export interface BookingFeedback {
+  reason: string
+  alternatives: BookingSlot[]
+}
+
+export interface BookingResult extends BookingFeedback {
+  id: string
+  status: 'approved' | 'pending'
 }
 
 export interface Project {
   id: string
   title: string
   description: string
+  deadlineAt: string | null
 }
 
 export interface AssistantStatus {

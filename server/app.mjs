@@ -1,9 +1,10 @@
 import express from 'express'
 import { ApprovalError, decideApproval, listApprovalQueue, listBookings } from './approvals.mjs'
 import { getResource, listResources } from './resources.mjs'
+import { createBooking, SchedulingError } from './scheduling.mjs'
 import { demoAccountIds } from './seed.mjs'
 
-export function createApp({ db, assistant, staticDirectory }) {
+export function createApp({ db, assistant, staticDirectory, clock = Date.now }) {
   const app = express()
   app.disable('x-powered-by')
   app.use('/api', express.json({ limit: '8kb' }))
@@ -45,13 +46,16 @@ export function createApp({ db, assistant, staticDirectory }) {
     res.json(resource)
   })
 
-  app.get('/api/bookings', demoAccount, (_req, res) => res.json(listBookings(db, res.locals.actor.id)))
-  app.get('/api/projects', demoAccount, (_req, res) => {
-    res.json(db.prepare('SELECT id, title, description FROM projects WHERE owner_id = ? ORDER BY title').all(res.locals.actor.id))
+  app.get('/api/bookings', demoAccount, (_req, res) => res.json(listBookings(db, res.locals.actor.id, clock())))
+  app.post('/api/bookings', demoAccount, (req, res) => {
+    res.status(201).json(createBooking(db, res.locals.actor, req.body, clock))
   })
-  app.get('/api/approvals', demoAccount, (_req, res) => res.json(listApprovalQueue(db, res.locals.actor)))
+  app.get('/api/projects', demoAccount, (_req, res) => {
+    res.json(db.prepare('SELECT id, title, description, deadline_at AS deadlineAt FROM projects WHERE owner_id = ? ORDER BY title').all(res.locals.actor.id))
+  })
+  app.get('/api/approvals', demoAccount, (_req, res) => res.json(listApprovalQueue(db, res.locals.actor, clock())))
   app.post('/api/approvals/:id', demoAccount, (req, res) => {
-    res.json(decideApproval(db, res.locals.actor, req.params.id, req.body?.decision))
+    res.json(decideApproval(db, res.locals.actor, req.params.id, req.body?.decision, clock))
   })
   app.get('/api/assistant/status', (_req, res) => res.json(assistant.status()))
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Endpoint not found.' }))
@@ -67,6 +71,9 @@ export function createApp({ db, assistant, staticDirectory }) {
   app.use((error, _req, res, next) => {
     if (res.headersSent) return next(error)
     if (error instanceof ApprovalError) return res.status(error.status).json({ error: error.message })
+    if (error instanceof SchedulingError) {
+      return res.status(error.status).json({ error: error.message, alternatives: error.alternatives })
+    }
     if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON request.' })
     if (error.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' })
     res.status(500).json({ error: 'Something went wrong. Please try again.' })

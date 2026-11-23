@@ -21,7 +21,8 @@ test('Express API exposes catalog and enforces demo account permissions', async 
   })
 
   assert.equal((await request('/health')).status, 200)
-  assert.equal((await (await request('/demo-accounts')).json()).length, 2)
+  assert.deepEqual((await (await request('/demo-accounts')).json()).map(account => account.id),
+    ['demo-student', 'demo-faculty', 'faculty-mech', 'faculty-cse'])
   assert.deepEqual((await (await request('/resources?q=esp32&department=ECE')).json()).map(item => item.id), ['esp32-devkit'])
   assert.equal((await request('/resources?q=a&q=b')).status, 400)
   assert.equal((await request('/resources/gpu-workstation')).status, 200)

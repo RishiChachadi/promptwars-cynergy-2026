@@ -58,7 +58,7 @@ export function App() {
       <div className="sidebar-bottom">
         <div className="demo-note"><FlaskConical size={17} aria-hidden="true" /><div><strong>Demo workspace</strong><span>Fictional campus data</span></div></div>
         {account && <div className="account">
-          <span className="avatar" aria-hidden="true">{account.role === 'student' ? 'AR' : 'MI'}</span>
+          <span className="avatar" aria-hidden="true">{account.name.split(' ').slice(-2).map(name => name[0]).join('')}</span>
           <div className="account-name"><strong>{account.name}</strong><small>{account.role === 'student' ? 'Student demo account' : 'Faculty demo account'}</small></div>
           <ChevronDown size={16} aria-hidden="true" />
           <select aria-label="Switch demo account" value={account.id} onChange={event => switchAccount(event.target.value)}>
@@ -82,7 +82,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<Dashboard account={account} />} />
             <Route path="/equipment" element={<Explore />} />
-            <Route path="/equipment/:id" element={<EquipmentDetails />} />
+            <Route path="/equipment/:id" element={<EquipmentDetails account={account} />} />
             <Route path="/bookings" element={<Bookings account={account} />} />
             <Route path="/assistant" element={<ProjectAssistant account={account} />} />
             <Route path="/approvals" element={<FacultyApprovals key={account.id} account={account} />} />

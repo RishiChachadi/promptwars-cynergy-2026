@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   owner_id TEXT NOT NULL REFERENCES users(id),
   title TEXT NOT NULL,
-  description TEXT NOT NULL
+  description TEXT NOT NULL,
+  deadline_at TEXT
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS resources (
@@ -45,7 +46,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   starts_at TEXT NOT NULL,
   ends_at TEXT NOT NULL CHECK (ends_at > starts_at),
   status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'declined', 'cancelled')),
-  purpose TEXT NOT NULL
+  purpose TEXT NOT NULL,
+  created_at TEXT
 ) STRICT;
 
 CREATE TABLE IF NOT EXISTS faculty_approvals (
@@ -53,6 +55,12 @@ CREATE TABLE IF NOT EXISTS faculty_approvals (
   faculty_id TEXT NOT NULL REFERENCES users(id),
   decision TEXT NOT NULL CHECK (decision IN ('approved', 'declined')),
   decided_at TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS project_equipment_requirements (
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  resource_id TEXT NOT NULL REFERENCES resources(id),
+  PRIMARY KEY (project_id, resource_id)
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS availability_resource_time ON availability (resource_id, starts_at, ends_at);

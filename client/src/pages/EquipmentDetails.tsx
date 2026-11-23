@@ -1,12 +1,14 @@
 import { CalendarDays, ChevronLeft, CircleCheckBig, MapPin } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
-import type { ResourceDetail } from '../../../shared/types'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import type { DemoAccount, ResourceDetail } from '../../../shared/types'
 import { useApi } from '../api'
 import { Badge, Empty, ErrorState, Loading, PageHeading, ResourceImage } from '../components'
 import { formatDate, formatWindow } from '../format'
+import { EquipmentBooking } from './EquipmentBooking'
 
-export function EquipmentDetails() {
+export function EquipmentDetails({ account }: { account: DemoAccount }) {
   const { id } = useParams()
+  const { search } = useLocation()
   const resource = useApi<ResourceDetail>('/resources/' + encodeURIComponent(id ?? ''))
   const data = resource.data
 
@@ -29,9 +31,10 @@ export function EquipmentDetails() {
             <h2><CircleCheckBig size={19} aria-hidden="true" /> Access requirements</h2>
             <p>{data.requiresApproval ? 'Faculty approval is required for this equipment.' : 'This equipment is listed for general student access.'}</p>
           </section>
+          {account.role === 'student' && data.status === 'available' &&
+            <EquipmentBooking key={account.id + '/' + data.id + search} account={account} resource={data} />}
           <section className="panel panel-body">
             <h2><CalendarDays size={19} aria-hidden="true" /> Lab windows</h2>
-            <p>These demo windows show lab hours and maintenance. Reservations open in a later phase.</p>
             {data.availability.length ? <ul className="window-list">{data.availability.map(window => <li key={window.startsAt + window.endsAt + window.kind}>
               <div><strong>{formatDate(window.startsAt)}</strong><span>{formatWindow(window.startsAt, window.endsAt)}</span></div>
               <span className="department">{window.kind === 'open' ? 'Lab hours' : 'Maintenance'}</span>

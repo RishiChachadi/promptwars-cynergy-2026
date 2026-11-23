@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { Box, CalendarDays, ChevronRight, CircleAlert, Clock3, Cpu, FlaskConical, MapPin, Monitor, Printer, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import type { Booking, Resource } from '../../shared/types'
-import { formatDay, formatMonth, formatWindow } from './format'
+import type { Booking, BookingSlot, Resource } from '../../shared/types'
+import { formatDate, formatDay, formatMonth, formatWindow } from './format'
 
 const labels = {
   available: 'Available',
@@ -55,7 +55,12 @@ export function EquipmentCard({ resource }: { resource: Resource }) {
   </article>
 }
 
-export function BookingRows({ bookings }: { bookings: Booking[] }) {
+export function rescheduleLink(resourceId: string, projectId: string, bookingId: string, slot: BookingSlot) {
+  const params = new URLSearchParams({ project: projectId, replace: bookingId, start: slot.startsAt, end: slot.endsAt })
+  return '/equipment/' + encodeURIComponent(resourceId) + '?' + params
+}
+
+export function BookingRows({ bookings, showScheduling = false }: { bookings: Booking[]; showScheduling?: boolean }) {
   return <ul className="booking-list">
     {bookings.map(booking => <li key={booking.id} className="booking-row">
       <div className="date-box" aria-hidden="true"><span>{formatMonth(booking.startsAt)}</span><strong>{formatDay(booking.startsAt)}</strong></div>
@@ -65,6 +70,16 @@ export function BookingRows({ bookings }: { bookings: Booking[] }) {
       </div>
       <span className="booking-time"><Clock3 size={15} aria-hidden="true" /><time dateTime={booking.startsAt} aria-label={new Date(booking.startsAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' }) + ', ' + formatWindow(booking.startsAt, booking.endsAt)}>{formatWindow(booking.startsAt, booking.endsAt)}</time></span>
       <Badge status={booking.status} />
+      {showScheduling && booking.scheduling && <div className="booking-guidance">
+        <p>{booking.scheduling.reason}</p>
+        {booking.scheduling.alternatives.length > 0 && <ul aria-label="Alternative times">
+          {booking.scheduling.alternatives.map(slot => <li key={slot.startsAt}>
+            <Link className="text-link" to={rescheduleLink(booking.resourceId, booking.projectId, booking.id, slot)}>
+              Reschedule to {formatDate(slot.startsAt)} · {formatWindow(slot.startsAt, slot.endsAt)}
+            </Link>
+          </li>)}
+        </ul>}
+      </div>}
     </li>)}
   </ul>
 }

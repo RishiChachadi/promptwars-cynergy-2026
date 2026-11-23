@@ -1,3 +1,5 @@
+import { addSchedulingGuidance, getSchedulingRequest, inWriteTransaction, validateApprovalSlot } from './scheduling.mjs'
+
 export class ApprovalError extends Error {
   constructor(status, message) {
     super(message)
@@ -8,7 +10,7 @@ export class ApprovalError extends Error {
 const bookingFields = `
   b.id, b.status, b.starts_at AS startsAt, b.ends_at AS endsAt, b.purpose,
   r.id AS resourceId, r.name AS resourceName, r.department, r.lab,
-  p.title AS projectTitle, u.name AS studentName
+  p.id AS projectId, p.title AS projectTitle, u.name AS studentName
 `
 const bookingJoins = `
   FROM bookings b
@@ -17,30 +19,31 @@ const bookingJoins = `
   JOIN users u ON u.id = b.user_id
 `
 
-export function listBookings(db, userId) {
-  return db.prepare(`SELECT ${bookingFields} ${bookingJoins} WHERE b.user_id = ? ORDER BY b.starts_at, b.id`).all(userId)
+export function listBookings(db, userId, now) {
+  const bookings = db.prepare(`SELECT ${bookingFields} ${bookingJoins} WHERE b.user_id = ? ORDER BY b.starts_at, b.id`).all(userId)
+  return addSchedulingGuidance(db, bookings, now)
 }
 
 function requireFaculty(actor) {
   if (actor.role !== 'faculty') throw new ApprovalError(403, 'A faculty demo account is required.')
 }
 
-export function listApprovalQueue(db, actor) {
+export function listApprovalQueue(db, actor, now) {
   requireFaculty(actor)
-  return db.prepare(`
+  const bookings = db.prepare(`
     SELECT ${bookingFields} ${bookingJoins}
     WHERE r.department = ? AND r.requires_approval = 1 AND b.status = 'pending'
     ORDER BY b.starts_at, b.id
   `).all(actor.department)
+  return addSchedulingGuidance(db, bookings, now)
 }
 
-export function decideApproval(db, actor, id, decision) {
+export function decideApproval(db, actor, id, decision, clock = Date.now) {
   requireFaculty(actor)
   if (decision !== 'approved' && decision !== 'declined') {
     throw new ApprovalError(400, 'Decision must be approved or declined.')
   }
-  db.exec('BEGIN IMMEDIATE')
-  try {
+  return inWriteTransaction(db, () => {
     const booking = db.prepare(`
       SELECT b.status, r.department, r.requires_approval AS requiresApproval
       FROM bookings b JOIN resources r ON r.id = b.resource_id WHERE b.id = ?
@@ -53,13 +56,11 @@ export function decideApproval(db, actor, id, decision) {
       throw new ApprovalError(409, 'This request is no longer pending faculty review.')
     }
 
+    const now = clock()
+    if (decision === 'approved') validateApprovalSlot(db, getSchedulingRequest(db, id), now)
     db.prepare('INSERT INTO faculty_approvals VALUES (?, ?, ?, ?)')
-      .run(id, actor.id, decision, new Date().toISOString())
+      .run(id, actor.id, decision, new Date(now).toISOString())
     db.prepare('UPDATE bookings SET status = ? WHERE id = ?').run(decision, id)
-    db.exec('COMMIT')
     return { id, status: decision }
-  } catch (error) {
-    db.exec('ROLLBACK')
-    throw error
-  }
+  })
 }

@@ -1,4 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { BookingSlot } from '../../shared/types'
+
+export class ApiError extends Error {
+  constructor(message: string, public alternatives: BookingSlot[] = []) {
+    super(message)
+  }
+}
 
 export async function request<T>(path: string, accountId?: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers)
@@ -6,7 +13,7 @@ export async function request<T>(path: string, accountId?: string, options?: Req
   const response = await fetch('/api' + path, { ...options, headers })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(body?.error || 'Unable to reach LabLink. Please try again.')
+    throw new ApiError(body?.error || 'Unable to reach LabLink. Please try again.', body?.alternatives)
   }
   return response.json()
 }

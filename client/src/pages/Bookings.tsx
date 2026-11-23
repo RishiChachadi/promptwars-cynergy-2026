@@ -21,12 +21,12 @@ export function Bookings({ account }: { account: DemoAccount }) {
   const visible = bookings.data?.filter(booking => filter === 'all' || booking.status === filter)
 
   return <>
-    <PageHeading title="My Bookings" description="View your demo reservations and their faculty review status." />
+    <PageHeading title="My Bookings" description="Track your confirmed reservations and requests awaiting faculty review." />
     <div className="status-filters" aria-label="Filter bookings" role="group">{filters.map(({ value, label }) =>
       <button type="button" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</button>,
     )}</div>
     {bookings.error ? <ErrorState message={bookings.error} retry={bookings.retry} /> : !visible ? <Loading message="Loading bookings…" /> :
-      visible.length ? <BookingRows bookings={visible} /> :
+      visible.length ? <BookingRows bookings={visible} showScheduling /> :
       <Empty title={filter === 'all' ? 'No bookings yet' : 'No bookings in this status'} icon="calendar">
         {filter === 'all' ? <Link className="text-link" to="/equipment">Explore Equipment</Link> : 'Select another status to see more bookings.'}
       </Empty>}
@@ -53,6 +53,7 @@ export function FacultyApprovals({ account }: { account: DemoAccount }) {
       queue.retry()
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not save the decision.')
+      queue.retry()
     } finally {
       setSaving(undefined)
     }
@@ -77,9 +78,10 @@ export function FacultyApprovals({ account }: { account: DemoAccount }) {
             <span><CalendarDays size={16} aria-hidden="true" />{formatDate(booking.startsAt)} · {formatWindow(booking.startsAt, booking.endsAt)}</span>
             <span><MapPin size={16} aria-hidden="true" />{booking.lab}</span>
           </div>
+          {booking.scheduling && <p>{booking.scheduling.reason}</p>}
           <div className="approval-actions">
             <button className="button button-secondary" type="button" disabled={!!saving} onClick={() => decide(booking, 'declined')}>Decline</button>
-            <button className="button button-primary" type="button" disabled={!!saving} onClick={() => decide(booking, 'approved')}>{saving === booking.id ? 'Saving…' : 'Approve'}</button>
+            <button className="button button-primary" type="button" disabled={!!saving || booking.scheduling?.canApprove === false} onClick={() => decide(booking, 'approved')}>{saving === booking.id ? 'Saving…' : 'Approve'}</button>
           </div>
         </li>)}</ul>}
   </>
