@@ -110,7 +110,7 @@ function dailyLimit(value) {
   return /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : 0
 }
 
-export function createProjectAssistant(env, { db, clock = Date.now, ...providerOptions } = {}) {
+export function createProjectAssistant(env, { db, clock = Date.now, onDiagnostic, ...providerOptions } = {}) {
   const generate = createGeminiProvider(env, providerOptions)
   const cap = dailyLimit(env.GEMINI_DAILY_REQUEST_CAP)
   const cache = new Map()
@@ -137,12 +137,18 @@ export function createProjectAssistant(env, { db, clock = Date.now, ...providerO
     const schema = responseSchema(catalog)
     for (let attempt = 0; attempt < 2; attempt++) {
       const blocked = claimAttempt(userId)
-      if (blocked) return { error: blocked }
+      if (blocked) {
+        onDiagnostic?.({ category: { daily: 'daily_cap', rate: 'account_rate_limit', quota: 'provider_cooldown' }[blocked], httpStatus: null })
+        return { error: blocked }
+      }
       const result = await generate(project, catalog, schema)
+      if (result.error) onDiagnostic?.({ category: result.category, httpStatus: result.httpStatus })
       if (result.error === 'quota') providerCooldownUntil = clock() + minute
       if (!result.retryable || attempt === 1) {
         if (result.error) return result
-        return validateSelection(result.data, project, resources) ? result : { error: 'invalid' }
+        if (validateSelection(result.data, project, resources)) return result
+        onDiagnostic?.({ category: 'catalog_validation', httpStatus: result.httpStatus })
+        return { error: 'invalid' }
       }
       await delay(150)
     }

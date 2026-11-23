@@ -112,6 +112,33 @@ test('malformed and incomplete model responses fall back without retrying', asyn
   assert.equal(calls, responses.length)
 })
 
+test('Gemini diagnostics distinguish failures without logging provider or project contents', async t => {
+  const diagnostics = []
+  const cases = [
+    [() => Response.json({ error: { message: 'private provider message', details: [{ reason: 'API_KEY_INVALID' }] } },
+      { status: 400 }), 'authentication', 400],
+    [() => new Response(null, { status: 400 }), 'request_rejected', 400],
+    [() => new Response(null, { status: 403 }), 'authentication', 403],
+    [() => new Response(null, { status: 404 }), 'model_endpoint', 404],
+    [() => new Response(null, { status: 429 }), 'provider_quota', 429],
+    [() => new Response('private malformed response'), 'response_validation', 200],
+    [() => geminiResponse({ ...valid, recommendations: [{ ...choice, fact: 42 }] }), 'catalog_validation', 200],
+    [() => { throw new Error('private transport message') }, 'network', null],
+  ]
+  let fetcher
+  const { assistant, advance } = fixture(t, async () => fetcher(), {}, {
+    onDiagnostic: diagnostic => diagnostics.push(diagnostic),
+  })
+  for (const [createResponse, category, httpStatus] of cases) {
+    fetcher = createResponse
+    diagnostics.length = 0
+    const result = await assistant.recommend(student, input)
+    assert.equal(result.mode, 'fallback')
+    assert.deepEqual(diagnostics, Array.from({ length: category === 'network' ? 2 : 1 }, () => ({ category, httpStatus })))
+    advance(60_001)
+  }
+})
+
 test('missing credentials and development opt-in use labeled deterministic matches', async t => {
   const noFetch = () => assert.fail('unexpected external request')
   const { assistant, db } = fixture(t, noFetch, { GEMINI_API_KEY: '' })
@@ -159,6 +186,7 @@ test('transient errors retry once, while quota errors suppress further live atte
 
 test('an aborted Gemini request times out and falls back without a third attempt', async t => {
   let calls = 0
+  const diagnostics = []
   const { assistant } = fixture(t, async (_url, { signal }) => {
     calls++
     const keepAlive = setTimeout(() => {}, 1000)
@@ -167,9 +195,13 @@ test('an aborted Gemini request times out and falls back without a third attempt
     } finally {
       clearTimeout(keepAlive)
     }
-  }, {}, { timeoutMs: 10 })
+  }, {}, { timeoutMs: 10, onDiagnostic: diagnostic => diagnostics.push(diagnostic) })
   assert.match((await assistant.recommend(student, input)).message, /could not respond/)
   assert.equal(calls, 2)
+  assert.deepEqual(diagnostics, [
+    { category: 'timeout', httpStatus: null },
+    { category: 'timeout', httpStatus: null },
+  ])
 })
 
 test('atomic daily cap counts retries, survives new assistant instances, and resets at midnight IST', async t => {
