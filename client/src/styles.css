@@ -135,7 +135,7 @@
   .window-list, .project-list { @apply mt-4 divide-y divide-line; }
   .window-list li { @apply flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm; }
   .window-list li span:not(.department) { @apply block text-xs text-muted; }
-  .project-list li { @apply py-3 text-sm; }
+  .project-list li { @apply py-3 text-sm; overflow-wrap: anywhere; }
   .project-list p { @apply mt-0.5; }
   .assistant-panel h2 { @apply mt-3 mb-2; }
   .assistant-results { @apply mt-5 grid gap-4; }

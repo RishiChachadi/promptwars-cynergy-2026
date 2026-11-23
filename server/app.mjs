@@ -1,6 +1,7 @@
 import express from 'express'
 import { ApprovalError, decideApproval, listApprovalQueue, listBookings } from './approvals.mjs'
 import { AssistantError } from './assistant.mjs'
+import { createProject, ProjectError } from './projects.mjs'
 import { getResource, listResources } from './resources.mjs'
 import { createBooking, SchedulingError } from './scheduling.mjs'
 import { demoAccountIds } from './seed.mjs'
@@ -54,6 +55,9 @@ export function createApp({ db, assistant, staticDirectory, clock = Date.now }) 
   app.get('/api/projects', demoAccount, (_req, res) => {
     res.json(db.prepare('SELECT id, title, description, deadline_at AS deadlineAt FROM projects WHERE owner_id = ? ORDER BY title').all(res.locals.actor.id))
   })
+  app.post('/api/projects', demoAccount, (req, res) => {
+    res.status(201).json(createProject(db, res.locals.actor, req.body, clock))
+  })
   app.get('/api/approvals', demoAccount, (_req, res) => res.json(listApprovalQueue(db, res.locals.actor, clock())))
   app.post('/api/approvals/:id', demoAccount, (req, res) => {
     res.json(decideApproval(db, res.locals.actor, req.params.id, req.body?.decision, clock))
@@ -74,7 +78,7 @@ export function createApp({ db, assistant, staticDirectory, clock = Date.now }) 
 
   app.use((error, _req, res, next) => {
     if (res.headersSent) return next(error)
-    if (error instanceof ApprovalError || error instanceof AssistantError) {
+    if (error instanceof ApprovalError || error instanceof AssistantError || error instanceof ProjectError) {
       return res.status(error.status).json({ error: error.message })
     }
     if (error instanceof SchedulingError) {

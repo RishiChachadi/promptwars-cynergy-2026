@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import type { AssistantResult, AssistantStatus, DemoAccount, EquipmentRecommendation, Project } from '../../../shared/types'
 import { request, useApi } from '../api'
 import { Empty, ErrorState, Loading, PageHeading } from '../components'
-import { formatDate, formatWindow } from '../format'
+import { formatDate, formatTime, formatWindow } from '../format'
+import { ProjectCreationForm } from './ProjectCreationForm'
 
 function Recommendation({ item, result }: { item: EquipmentRecommendation; result: AssistantResult }) {
   const next = item.slots[0]
@@ -99,16 +100,20 @@ export function ProjectAssistant({ account }: { account: DemoAccount }) {
         <Link className="button button-secondary mt-4" to="/equipment"><Boxes size={17} aria-hidden="true" />Browse equipment catalog</Link>
       </section>
       <section className="panel panel-body">
-        <h2><FolderOpen size={19} aria-hidden="true" /> Your demo projects</h2>
+        <h2><FolderOpen size={19} aria-hidden="true" /> Your projects</h2>
+        {student && <ProjectCreationForm accountId={account.id} onCreated={projects.retry} />}
         {projects.error ? <ErrorState message={projects.error} retry={projects.retry} /> : !projects.data ? <Loading message="Loading projects…" /> :
           projects.data.length ? <ul className="project-list">{projects.data.map(project => <li key={project.id}>
             <strong>{project.title}</strong><p>{project.description}</p>
+            {project.deadlineAt && <p>Deadline {formatDate(project.deadlineAt)}, {formatTime(project.deadlineAt)} IST</p>}
             {student && <button type="button" className="button button-secondary mt-2" disabled={saving} onClick={() => {
               setDescription(project.description.slice(0, 1200))
               setProjectId(project.id)
             }}>Use this project</button>}
           </li>)}</ul> :
-          <Empty title="No projects for this account" icon="lab">Switch to the Student demo account to see a sample project.</Empty>}
+          <Empty title="No projects for this account" icon="lab">
+            {student ? 'Create a project to get started.' : 'Switch to the Student demo account to see its projects.'}
+          </Empty>}
       </section>
     </div>
   </>

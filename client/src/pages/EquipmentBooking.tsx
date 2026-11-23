@@ -63,7 +63,7 @@ export function EquipmentBooking({ account, resource }: { account: DemoAccount; 
     <h2>{replaceRequestId ? 'Reschedule request' : 'Book equipment'}</h2>
     {projects.error ? <ErrorState message={projects.error} retry={projects.retry} /> :
       !projects.data ? <Loading message="Loading your projects…" /> :
-      projects.data.length === 0 ? <p>You need a project before you can request equipment.</p> :
+      projects.data.length === 0 ? <p><Link className="text-link" to="/assistant">Create a project in Project Assistant</Link> before requesting equipment.</p> :
       !feedback?.bookingId && <form className="booking-form" onSubmit={submit}>
         <p>Choose 15 minutes to 8 hours within lab hours. All times are in IST.</p>
         <label className="field">Project
