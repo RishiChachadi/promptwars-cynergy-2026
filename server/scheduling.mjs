@@ -174,19 +174,32 @@ function priorityReason(winner, other) {
   return priorityRules.find(([value]) => value(winner) !== value(other))?.[1] ?? firstCome
 }
 
-function preferredRequests(db, schedule) {
-  const feasible = feasibleRequests(schedule)
-  const ranked = feasible.map(request => ({
+// Separate each fairness factor so priority ordering stays auditable and testable.
+function hasAlternativeSlot(db, schedule, request, feasible) {
+  return !feasible.some(row => row.id !== request.id && overlaps(row, request)) ||
+    suggest(db, schedule, request, feasible).length > 0
+}
+
+function recentEquipmentUsage(schedule, request) {
+  return schedule.reservations.reduce((total, row) => {
+    if (row.userId !== request.userId || row.resourceId !== request.resourceId || row.end > schedule.now) return total
+    return total + Math.max(0, row.end - Math.max(row.start, schedule.now - 30 * day))
+  }, 0)
+}
+
+function priorityEntry(db, schedule, feasible, request) {
+  return {
     request,
     aged: !request.createdAt || schedule.now - Date.parse(request.createdAt) >= 2 * day,
-    flexible: !feasible.some(row => row.id !== request.id && overlaps(row, request)) ||
-      suggest(db, schedule, request, feasible).length > 0,
+    flexible: hasAlternativeSlot(db, schedule, request, feasible),
     slack: deadline(request) - schedule.now - (request.end - request.start),
-    usage: schedule.reservations.reduce((total, row) => {
-      if (row.userId !== request.userId || row.resourceId !== request.resourceId || row.end > schedule.now) return total
-      return total + Math.max(0, row.end - Math.max(row.start, schedule.now - 30 * day))
-    }, 0),
-  })).sort(comparePriority)
+    usage: recentEquipmentUsage(schedule, request),
+  }
+}
+
+function preferredRequests(db, schedule) {
+  const feasible = feasibleRequests(schedule)
+  const ranked = feasible.map(request => priorityEntry(db, schedule, feasible, request)).sort(comparePriority)
 
   const selected = []
   const blocked = new Map()
